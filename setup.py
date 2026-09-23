@@ -35,7 +35,7 @@ def webhook():
     return "OK", 200
 
 @app.route("/", methods=["GET"])
-def webhook():
+def checkrun():
     return "OK", 200
 
 if __name__ == "__main__":
