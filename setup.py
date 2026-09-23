@@ -1,33 +1,41 @@
 import os
-from flask import Flask, request, jsonify
-from bale_bot import Bot, Update
+import requests
+from flask import Flask, request
 
 app = Flask(__name__)
 
-TOKEN = os.getenv("BALE_BOT_TOKEN")
+TOKEN = os.getenv("Token")
 if not TOKEN:
     raise RuntimeError("BALE_BOT_TOKEN is not set")
 
-bot = Bot(token=TOKEN)
+BASE_URL = f"https://tapi.bale.ai/bot{TOKEN}"
 
-@app.route("/", methods=["GET"])
-def home():
-    return "Bot is alive", 200
+def send_message(chat_id, text):
+    url = f"{BASE_URL}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": text
+    }
+    response = requests.post(url, json=payload, timeout=10)
+    response.raise_for_status()
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json(silent=True) or {}
 
-    try:
-        update = Update.de_json(data, bot)
-        if update.message and update.message.text:
-            bot.send_message(
-                chat_id=update.message.chat.id,
-                text=update.message.text
-            )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    message = data.get("message")
+    if message:
+        chat = message.get("chat", {})
+        chat_id = chat.get("id")
+        text = message.get("text")
 
+        if chat_id and text is not None:
+            send_message(chat_id, text)
+
+    return "OK", 200
+
+@app.route("/", methods=["GET"])
+def webhook():
     return "OK", 200
 
 if __name__ == "__main__":
