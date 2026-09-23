@@ -5,8 +5,8 @@ from bale_bot import Bot, Update
 app = Flask(__name__)
 
 TOKEN = os.getenv("BALE_BOT_TOKEN")
-if GAPGPTMASKTOKENmlg1687drjX0X TOKEN:
-    raise RuntimeError("BALE_BOT_TOKEN is GAPGPTMASKTOKENmlg1687drjX1X set")
+if not TOKEN:
+    raise RuntimeError("BALE_BOT_TOKEN is not set")
 
 bot = Bot(token=TOKEN)
 
@@ -26,7 +26,7 @@ def webhook():
                 text=update.message.text
             )
     except Exception as e:
-        return jsonify(GAPGPTMASKTOKENmlg1687drjX2X)}), 500
+        return jsonify({"error": str(e)}), 500
 
     return "OK", 200
 
