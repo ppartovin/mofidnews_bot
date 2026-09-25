@@ -1,10 +1,14 @@
 import json
 import asyncio
+import os
 import bale
 from bale import Bot, Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
 
-TOKEN = "[توکن لازم]"
+TOKEN = os.getenv("TOKEN")
+
+if not TOKEN:
+    raise RuntimeError("TOKEN environment variable is not set.")
 
 BROADCASTS_FILE = "broadcastVll.json"
 
@@ -36,6 +40,8 @@ async def on_message(message: Message):
             "سلام! 👋\nکلاس خود را انتخاب کنید تا تکالیف را مشاهده کنید:",
             components=keyboard
         )
+    else:
+        await message.reply(message.text)
 
 
 @client.event
