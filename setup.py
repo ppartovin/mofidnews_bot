@@ -1,42 +1,57 @@
-import os
-import requests
-from flask import Flask, request
+import json
+import asyncio
+import bale
+from bale import Bot, Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
-app = Flask(__name__)
 
-TOKEN = os.getenv("Token")
-if not TOKEN:
-    raise RuntimeError("BALE_BOT_TOKEN is not set")
+TOKEN = "[توکن لازم]"
 
-BASE_URL = f"https://tapi.bale.ai/bot{TOKEN}"
+BROADCASTS_FILE = "broadcastVll.json"
 
-def send_message(chat_id, text):
-    url = f"{BASE_URL}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": text
-    }
-    response = requests.post(url, json=payload, timeout=10)
-    response.raise_for_status()
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    data = request.get_json(silent=True) or {}
+def load_broadcasts() -> dict:
+    """بارگذاری تکالیف از فایل JSON"""
+    with open(BROADCASTS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-    message = data.get("message")
-    if message:
-        chat = message.get("chat", {})
-        chat_id = chat.get("id")
-        text = message.get("text")
 
-        if chat_id and text is not None:
-            send_message(chat_id, text)
+def build_keyboard(broadcasts: dict) -> InlineKeyboardMarkup:
+    """ساخت دکمه‌های اینلاین بر اساس کلیدهای JSON"""
+    keyboard = InlineKeyboardMarkup()
+    for class_name in broadcasts.keys():
+        keyboard.add(InlineKeyboardButton(class_name, callback_data=class_name))
+    return keyboard
 
-    return "OK", 200
 
-@app.route("/", methods=["GET"])
-def checkrun():
-    return "OK", 200
+client = Bot(token=TOKEN)
+
+
+@client.event
+async def on_message(message: Message):
+    """هندل کردن پیام‌های دریافتی"""
+    if message.text == "/start":
+        broadcasts = load_broadcasts()
+        keyboard = build_keyboard(broadcasts)
+        await message.reply(
+            "سلام! 👋\nکلاس خود را انتخاب کنید تا تکالیف را مشاهده کنید:",
+            components=keyboard
+        )
+
+
+@client.event
+async def on_callback(callback: CallbackQuery):
+    """هندل کردن کلیک روی دکمه‌ها"""
+    selected = callback.data  # نام کلاس انتخاب‌شده
+
+    broadcasts = load_broadcasts()
+
+    if selected in broadcasts:
+        await callback.message.reply(broadcasts[selected])
+    else:
+        await callback.message.reply("❌ اطلاعاتی برای این کلاس یافت نشد.")
+
+    await callback.answer()  # بستن حالت loading دکمه
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    client.run()
