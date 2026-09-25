@@ -2,6 +2,9 @@ import os
 import requests
 from flask import Flask, request
 
+from ai_client import generate_reply
+from data_loader import load_data
+
 app = Flask(__name__)
 
 TOKEN = os.getenv("TOKEN")
@@ -10,7 +13,8 @@ if not TOKEN:
 
 BASE_URL = f"https://tapi.bale.ai/bot{TOKEN}"
 
-def send_message(chat_id, text):
+def send_message(chat_id: int, text: str) -> None:
+    """Send a text message to a Bale chat."""
     url = f"{BASE_URL}/sendMessage"
     payload = {
         "chat_id": chat_id,
@@ -18,6 +22,7 @@ def send_message(chat_id, text):
     }
     response = requests.post(url, json=payload, timeout=10)
     response.raise_for_status()
+
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -30,9 +35,16 @@ def webhook():
         text = message.get("text")
 
         if chat_id and text is not None:
-            send_message(chat_id, text)
+            try:
+                application_data = load_data()
+                reply = generate_reply(text, application_data)
+            except RuntimeError:
+                reply = "متأسفانه در پردازش پیام شما خطایی رخ داد. لطفاً دوباره تلاش کنید."
+
+            send_message(chat_id, reply)
 
     return "OK", 200
+
 
 @app.route("/", methods=["GET"])
 def checkrun():
