@@ -4,7 +4,7 @@ from flask import Flask, request
 
 app = Flask(__name__)
 
-TOKEN = os.getenv("Token")
+TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     raise RuntimeError("BALE_BOT_TOKEN is not set")
 
