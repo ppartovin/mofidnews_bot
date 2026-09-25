@@ -13,12 +13,25 @@ if not TOKEN:
 
 BASE_URL = f"https://tapi.bale.ai/bot{TOKEN}"
 
-def send_message(chat_id: int, text: str) -> None:
+def send_message(chat_id: int, text: str) -> dict:
     """Send a text message to a Bale chat."""
     url = f"{BASE_URL}/sendMessage"
     payload = {
         "chat_id": chat_id,
         "text": text
+    }
+    response = requests.post(url, json=payload, timeout=10)
+    response.raise_for_status()
+    return response.json().get("result", {})
+
+
+def edit_message(chat_id: int, message_id: int, text: str) -> None:
+    """Edit a previously sent text message in a Bale chat."""
+    url = f"{BASE_URL}/editMessageText"
+    payload = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "text": text,
     }
     response = requests.post(url, json=payload, timeout=10)
     response.raise_for_status()
@@ -35,13 +48,19 @@ def webhook():
         text = message.get("text")
 
         if chat_id and text is not None:
+            processing_message = send_message(chat_id, "در حال پردازش...")
+            processing_message_id = processing_message.get("message_id")
+
             try:
                 application_data = load_data()
                 reply = generate_reply(text, application_data)
             except RuntimeError:
                 reply = "متأسفانه در پردازش پیام شما خطایی رخ داد. لطفاً دوباره تلاش کنید."
 
-            send_message(chat_id, reply)
+            if processing_message_id is not None:
+                edit_message(chat_id, processing_message_id, reply)
+            else:
+                send_message(chat_id, reply)
 
     return "OK", 200
 
