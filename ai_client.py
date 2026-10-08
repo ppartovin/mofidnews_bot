@@ -1,6 +1,7 @@
 """Client for sending user messages and application data to an AI API."""
 
 import json
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -10,6 +11,15 @@ from openai import OpenAI
 
 from config import SYSTEM_PROMPT
 
+_API_LOGGER = logging.getLogger("ai_api_requests")
+_API_LOGGER.setLevel(logging.INFO)
+_API_LOGGER.propagate = False
+if not _API_LOGGER.handlers:
+    _log_file = os.path.join(os.path.dirname(__file__), "logs.txt")
+    _handler = logging.FileHandler(_log_file, encoding="utf-8")
+    _handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    _API_LOGGER.addHandler(_handler)
+
 
 def generate_reply(user_message: str, data: Any) -> str:
     """Generate a reply using the user's message and the application data."""
@@ -17,16 +27,21 @@ def generate_reply(user_message: str, data: Any) -> str:
         api_key=os.getenv("AI_API_KEY"),
         base_url=os.getenv("AI_BASE_URL"),
     )
-    response = client.chat.completions.create(
-        model=os.getenv("AI_MODEL"),
-        messages=[
+    request_payload = {
+        "model": os.getenv("AI_MODEL"),
+        "messages": [
             {"role": "system", "content": f"{SYSTEM_PROMPT}\n\n{_current_date_context()}"},
             {
                 "role": "user",
                 "content": _build_user_prompt(user_message, data),
             },
         ],
+    }
+    _API_LOGGER.info(
+        "%s",
+        json.dumps(request_payload, ensure_ascii=False, separators=(",", ":")),
     )
+    response = client.chat.completions.create(**request_payload)
     return response.choices[0].message.content.strip()
 
 
