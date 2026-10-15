@@ -4,6 +4,7 @@ from flask import Flask, request
 
 from ai_client import generate_reply
 from data_loader import load_data
+from rate_limiter import configure_rate_limiter
 
 app = Flask(__name__)
 
@@ -37,7 +38,11 @@ def edit_message(chat_id: int, message_id: int, text: str) -> None:
     response.raise_for_status()
 
 
+rate_limit_messages = configure_rate_limiter(app, send_message)
+
+
 @app.route("/webhook", methods=["POST"])
+@rate_limit_messages
 def webhook():
     data = request.get_json(silent=True) or {}
 

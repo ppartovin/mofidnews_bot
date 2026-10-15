@@ -1,0 +1,71 @@
+"""Per-user rate limiting for incoming Bale messages."""
+
+from flask import jsonify, request
+from flask_limiter import Limiter
+from werkzeug.exceptions import TooManyRequests
+
+
+RATE_LIMIT = "40 per 12 hours"
+RATE_LIMIT_MESSAGE = "سهمیه پیام شما تکمیل شده است. لطفاً ۱۲ ساعت بعد دوباره تلاش کنید."
+
+
+def _message_data():
+    data = request.get_json(silent=True) or {}
+    message = data.get("message")
+    return message if isinstance(message, dict) else None
+
+
+def _is_not_user_message() -> bool:
+    """Skip updates that the webhook does not handle as user messages."""
+    message = _message_data()
+    if not message or message.get("text") is None:
+        return True
+
+    chat = message.get("chat")
+    return not isinstance(chat, dict) or not chat.get("id")
+
+
+def _user_key() -> str:
+    message = _message_data() or {}
+    sender = message.get("from") or message.get("sender") or {}
+
+    if isinstance(sender, dict) and sender.get("id") is not None:
+        return f"bale-user:{sender['id']}"
+
+    chat = message.get("chat") or {}
+    if isinstance(chat, dict) and chat.get("id") is not None:
+        return f"bale-chat:{chat['id']}"
+
+    return f"ip:{request.remote_addr or 'unknown'}"
+
+
+def configure_rate_limiter(app, send_message):
+    """Attach the limiter and return its webhook decorator."""
+    limiter = Limiter(
+        key_func=_user_key,
+        storage_uri="memory://",
+        strategy="moving-window",
+        default_limits=[],
+    )
+    limiter.init_app(app)
+
+    @app.errorhandler(TooManyRequests)
+    def handle_rate_limit_exceeded(error):
+        message = _message_data()
+        chat = message.get("chat", {}) if message else {}
+        chat_id = chat.get("id") if isinstance(chat, dict) else None
+
+        if chat_id:
+            try:
+                send_message(chat_id, RATE_LIMIT_MESSAGE)
+            except Exception:
+                app.logger.exception("Could not notify user about the rate limit")
+
+        # Acknowledge the webhook update so the platform does not keep retrying it.
+        return jsonify({"ok": True}), 200
+
+    return limiter.limit(
+        RATE_LIMIT,
+        exempt_when=_is_not_user_message,
+        error_message=RATE_LIMIT_MESSAGE,
+    )

@@ -1,4 +1,5 @@
 Flask
+Flask-Limiter
 requests==2.32.2
 python-bale-bot
 openai
