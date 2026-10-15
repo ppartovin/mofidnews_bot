@@ -52,13 +52,13 @@ def _current_date_context() -> str:
     today = datetime.now(timezone(timedelta(hours=3, minutes=30)))
     persian_today = jdatetime.date.fromgregorian(date=today.date())
     weekdays = (
+        "\u0634\u0646\u0628\u0647",
+        "\u06cc\u06a9\u0634\u0646\u0628\u0647",
         "\u062f\u0648\u0634\u0646\u0628\u0647",
         "\u0633\u0647\u200c\u0634\u0646\u0628\u0647",
         "\u0686\u0647\u0627\u0631\u0634\u0646\u0628\u0647",
         "\u067e\u0646\u062c\u0634\u0646\u0628\u0647",
         "\u062c\u0645\u0639\u0647",
-        "\u0634\u0646\u0628\u0647",
-        "\u06cc\u06a9\u0634\u0646\u0628\u0647",
     )
     return (
         f"\u062a\u0627\u0631\u06cc\u062e \u0627\u0645\u0631\u0648\u0632: "
