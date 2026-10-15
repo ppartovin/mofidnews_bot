@@ -5,7 +5,7 @@ from flask_limiter import Limiter
 from werkzeug.exceptions import TooManyRequests
 
 
-RATE_LIMIT = "40 per 12 hours"
+RATE_LIMIT = "2 per 12 hours"
 RATE_LIMIT_MESSAGE = "سهمیه پیام شما تکمیل شده است. لطفاً ۱۲ ساعت بعد دوباره تلاش کنید."
 
 
