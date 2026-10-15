@@ -2,11 +2,10 @@
 
 from flask import jsonify, request
 from flask_limiter import Limiter
-from werkzeug.exceptions import TooManyRequests
 
 
 RATE_LIMIT = "2 per 12 hours"
-RATE_LIMIT_MESSAGE = "سهمیه پیام شما تکمیل شده است. لطفاً ۱۲ ساعت بعد دوباره تلاش کنید."
+RATE_LIMIT_MESSAGE = "شما به محدودیت ارسال پیام رسیده‌اید. لطفاً ۱۲ ساعت بعد دوباره تلاش کنید."
 
 
 def _message_data():
@@ -49,8 +48,7 @@ def configure_rate_limiter(app, send_message):
     )
     limiter.init_app(app)
 
-    @app.errorhandler(TooManyRequests)
-    def handle_rate_limit_exceeded(error):
+    def handle_rate_limit_exceeded(_request_limit):
         message = _message_data()
         chat = message.get("chat", {}) if message else {}
         chat_id = chat.get("id") if isinstance(chat, dict) else None
@@ -68,4 +66,5 @@ def configure_rate_limiter(app, send_message):
         RATE_LIMIT,
         exempt_when=_is_not_user_message,
         error_message=RATE_LIMIT_MESSAGE,
+        on_breach=handle_rate_limit_exceeded,
     )
