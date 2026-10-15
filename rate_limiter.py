@@ -1,10 +1,12 @@
 """Per-user rate limiting for incoming Bale messages."""
 
+import os
+
 from flask import jsonify, request
 from flask_limiter import Limiter
 
 
-RATE_LIMIT = "2 per 12 hours"
+RATE_LIMIT = os.getenv("RATE_LIMIT")
 RATE_LIMIT_MESSAGE = "شما به محدودیت ارسال پیام رسیده‌اید. لطفاً ۱۲ ساعت بعد دوباره تلاش کنید."
 
 
