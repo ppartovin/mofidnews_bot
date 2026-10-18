@@ -24,10 +24,6 @@ if not _API_LOGGER.handlers:
 
 def generate_reply(user_message: str, data: Any) -> str:
     """Generate a reply using the user's message and the application data."""
-    client = OpenAI(
-        api_key=os.getenv("AI_API_KEY"),
-        base_url=os.getenv("AI_BASE_URL"),
-    )
     request_payload = {
         "model": os.getenv("AI_MODEL"),
         "messages": [
@@ -42,8 +38,12 @@ def generate_reply(user_message: str, data: Any) -> str:
         "%s",
         json.dumps(request_payload, ensure_ascii=False, separators=(",", ":")),
     )
-    response = client.chat.completions.create(**request_payload)
-    return response.choices[0].message.content.strip()
+    with OpenAI(
+        api_key=os.getenv("AI_API_KEY"),
+        base_url=os.getenv("AI_BASE_URL"),
+    ) as client:
+        response = client.chat.completions.create(**request_payload)
+        return response.choices[0].message.content.strip()
 
 
 def _current_date_context() -> str:
