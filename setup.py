@@ -4,9 +4,11 @@ from flask import Flask, request
 
 from ai_client import generate_reply
 from data_loader import load_data
+from error_handling import ERROR_REPLY, deliver_reply, register_error_handlers, safe_call
 from rate_limiter import configure_rate_limiter
 
 app = Flask(__name__)
+register_error_handlers(app)
 
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
@@ -47,25 +49,23 @@ def webhook():
     data = request.get_json(silent=True) or {}
 
     message = data.get("message")
-    if message:
+    if isinstance(message, dict):
         chat = message.get("chat", {})
-        chat_id = chat.get("id")
+        chat_id = chat.get("id") if isinstance(chat, dict) else None
         text = message.get("text")
 
         if chat_id and text is not None:
-            processing_message = send_message(chat_id, "در حال پردازش...")
+            processing_message = safe_call(send_message, chat_id, "در حال پردازش...", default={})
             processing_message_id = processing_message.get("message_id")
 
             try:
                 application_data = load_data()
                 reply = generate_reply(text, application_data)
-            except RuntimeError:
-                reply = "متأسفانه در پردازش پیام شما خطایی رخ داد. لطفاً دوباره تلاش کنید."
+            except Exception:
+                app.logger.exception("Could not generate a reply")
+                reply = ERROR_REPLY
 
-            if processing_message_id is not None:
-                edit_message(chat_id, processing_message_id, reply)
-            else:
-                send_message(chat_id, reply)
+            deliver_reply(send_message, edit_message, chat_id, processing_message_id, reply)
 
     return "OK", 200
 
