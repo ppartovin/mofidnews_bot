@@ -27,9 +27,10 @@ def deliver_reply(send_message, edit_message, chat_id, message_id, text) -> None
             edit_message(chat_id, message_id, text)
             return
         except Exception:
-            logger.exception("Could not edit the processing message")
+            logger.exception("Could not edit the processing message; sending a new one")
 
-    safe_call(send_message, chat_id, text)
+    if safe_call(send_message, chat_id, text) is None:
+        logger.error("Reply could not be delivered: chat_id=%s", chat_id)
 
 
 def register_error_handlers(app) -> None:

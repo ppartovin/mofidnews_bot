@@ -1,9 +1,10 @@
 """Client for sending user messages and application data to an AI API."""
 #hello
 
-import json
 import logging
+import json
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -12,14 +13,10 @@ from openai import OpenAI
 
 from config import SYSTEM_PROMPT
 
-_API_LOGGER = logging.getLogger("ai_api_requests")
-_API_LOGGER.setLevel(logging.INFO)
-_API_LOGGER.propagate = False
-if not _API_LOGGER.handlers:
-    _log_file = os.path.join(os.path.dirname(__file__), "logs.txt")
-    _handler = logging.FileHandler(_log_file, encoding="utf-8")
-    _handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
-    _API_LOGGER.addHandler(_handler)
+from logging_config import AI_LOGGER_NAME
+
+_API_LOGGER = logging.getLogger(AI_LOGGER_NAME)
+logger = logging.getLogger(__name__)
 
 
 def generate_reply(user_message: str, data: Any) -> str:
@@ -38,12 +35,32 @@ def generate_reply(user_message: str, data: Any) -> str:
         "%s",
         json.dumps(request_payload, ensure_ascii=False, separators=(",", ":")),
     )
-    with OpenAI(
-        api_key=os.getenv("AI_API_KEY"),
-        base_url=os.getenv("AI_BASE_URL"),
-    ) as client:
-        response = client.chat.completions.create(**request_payload)
-        return response.choices[0].message.content.strip()
+    logger.info(
+        "Sending AI request: model=%s message_chars=%d",
+        request_payload["model"], len(user_message),
+    )
+    started = time.perf_counter()
+    try:
+        with OpenAI(
+            api_key=os.getenv("AI_API_KEY"),
+            base_url=os.getenv("AI_BASE_URL"),
+        ) as client:
+            response = client.chat.completions.create(**request_payload)
+            reply = response.choices[0].message.content.strip()
+    except Exception:
+        logger.exception(
+            "AI request failed after %.0f ms", (time.perf_counter() - started) * 1000
+        )
+        raise
+    usage = getattr(response, "usage", None)
+    logger.info(
+        "AI response received in %.0f ms: reply_chars=%d prompt_tokens=%s completion_tokens=%s",
+        (time.perf_counter() - started) * 1000,
+        len(reply),
+        getattr(usage, "prompt_tokens", "?"),
+        getattr(usage, "completion_tokens", "?"),
+    )
+    return reply
 
 
 def _current_date_context() -> str:

@@ -1,12 +1,14 @@
 """Per-user rate limiting for incoming Bale messages."""
 
 import os
+import logging
 
 from flask import jsonify, request
 from flask_limiter import Limiter
 
 
 RATE_LIMIT = os.getenv("RATE_LIMIT")
+logger = logging.getLogger(__name__)
 RATE_LIMIT_MESSAGE = "شما به محدودیت ارسال پیام رسیده‌اید. لطفاً ۱۲ ساعت بعد دوباره تلاش کنید."
 
 
@@ -55,6 +57,10 @@ def configure_rate_limiter(app, send_message):
         chat = message.get("chat", {}) if message else {}
         chat_id = chat.get("id") if isinstance(chat, dict) else None
 
+        logger.warning(
+            "Rate limit exceeded: key=%s chat_id=%s limit=%s",
+            _user_key(), chat_id, _request_limit.limit,
+        )
         if chat_id:
             try:
                 send_message(chat_id, RATE_LIMIT_MESSAGE)
@@ -64,6 +70,7 @@ def configure_rate_limiter(app, send_message):
         # Acknowledge the webhook update so the platform does not keep retrying it.
         return jsonify({"ok": True}), 200
 
+    logger.info("Rate limiter configured: limit=%s", RATE_LIMIT)
     return limiter.limit(
         RATE_LIMIT,
         exempt_when=_is_not_user_message,
