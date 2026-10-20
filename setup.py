@@ -86,7 +86,7 @@ def webhook():
             deliver_reply(send_message, edit_message, chat_id, processing_message_id, reply)
         else:
             logger.debug("Ignored non-text message: chat_id=%s", chat_id)
-
+	exit(1)
     return "OK", 200
 
 
